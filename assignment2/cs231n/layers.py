@@ -236,23 +236,13 @@ def batchnorm_backward(dout, cache):
   var = cache[4]
   N = x.shape[0]
 
-  doutdx_hat = dout*gamma
-  doutdvar = np.sum([doutdx_hat[i,:]*(x[i,:] - mu) for i in xrange(N)], axis=0)
-  doutdvar *= -0.5*var**(-3./2)
-  doutdmu = doutdvar*(-2./N)*np.sum(x - mu, axis=0) - (1./np.sqrt(var))*np.sum(doutdx_hat, axis=0)
-  dx = doutdx_hat*(1./np.sqrt(var)) + doutdvar*(2./N)*(x - mu) + doutdmu*(1./N)
+  path1 = dout*gamma*(1./np.sqrt(var))
+  path2 = np.sum(dout, axis=0)*gamma*(-1./np.sqrt(var))*(1./N)
+  partial_path34 = np.sum(dout*gamma*(x - mu), axis=0)*(-0.5)*var**(-3./2)
+  path3 = partial_path34*(-2.)*(1./N)*np.sum(x - mu, axis=0)*(1./N)
+  path4 = partial_path34*(2.)*(1./N)*(x - mu)
 
-  #dx = np.zeros_like(x)
-  #dydnx  = dout*gamma
-  #for i in xrange(N):
-  #    # need to sum over ALL dout*dydnx (normed x)
-  #    dydsig = np.sum(x[i,:] - mu, axis=0)*(-0.5)*(var)**(-3./2)
-  #    # also need to some over all dout*dydnx here
-  #    dydmu  = -1/np.sqrt(var) + dydsig*(-2./N)*np.sum(x - mu, axis=0)
-  #    dydx   = 1/np.sqrt(var) + dydmu*(1./N) + dydsig*(2./N)*(x[i,:] - mu)
-  #    dydx   = dout[i,:]*gamma*dydx
-  #    dx[i,:] = dydx
-
+  dx = path1 + path2 + path3 + path4
   dgamma = np.sum([dout[i,:]*x_hat[i,:] for i in xrange(N)], axis=0)
   dbeta = np.sum(dout, axis=0)
   #############################################################################
@@ -284,7 +274,21 @@ def batchnorm_backward_alt(dout, cache):
   # should be able to compute gradients with respect to the inputs in a       #
   # single statement; our implementation fits on a single 80-character line.  #
   #############################################################################
-  pass
+  x = cache[0]
+  x_hat = cache[1]
+  gamma = cache[2]
+  mu = cache[3]
+  var = cache[4]
+  N = x.shape[0]
+
+  doutdx_hat = dout*gamma
+  doutdvar = np.sum([doutdx_hat[i,:]*(x[i,:] - mu) for i in xrange(N)], axis=0)
+  doutdvar *= -0.5*var**(-3./2)
+  doutdmu = doutdvar*(-2./N)*np.sum(x - mu, axis=0) - (1./np.sqrt(var))*np.sum(doutdx_hat, axis=0)
+  dx = doutdx_hat*(1./np.sqrt(var)) + doutdvar*(2./N)*(x - mu) + doutdmu*(1./N)
+
+  dgamma = np.sum([dout[i,:]*x_hat[i,:] for i in xrange(N)], axis=0)
+  dbeta = np.sum(dout, axis=0)
   #############################################################################
   #                             END OF YOUR CODE                              #
   #############################################################################
